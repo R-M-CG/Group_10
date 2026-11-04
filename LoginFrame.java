@@ -1,104 +1,83 @@
-package RealEstate;
 
-import java.awt.Font;
+package com.my.rem;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.swing.*;
 
+
 public class LoginFrame extends JFrame implements ActionListener {
-
-    private String url = "jdbc:mysql://localhost:3306/realestate_db";
-    private String dbUser = "root";
-    private String dbPass = "";
-
-    private JLabel lblTitle, lblUsername, lblPassword;
     private JTextField txtUsername;
     private JPasswordField txtPassword;
     private JButton btnLogin;
-
-    public static void main(String[] args) {
-        LoginFrame app = new LoginFrame();
-        app.setTitle("Real Estate Management System - Login");
-        app.setVisible(true);
-    }
+    private JLabel lbUser, lbPass, lbTitle;
 
     public LoginFrame() {
-        setSize(420, 300);
+        setTitle("Login - Real Estate Management System");
+        setSize(350, 250);
         setLayout(null);
-        setResizable(false);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        //Title
-        lblTitle = new JLabel("Admin Login");
-        lblTitle.setFont(new Font("Tahoma", Font.BOLD, 26));
-        lblTitle.setBounds(115, 20, 250, 40);
-        add(lblTitle);
+        lbTitle = new JLabel("Real Estate System Login");
+        lbTitle.setBounds(100, 20, 200, 30);
+        add(lbTitle);
 
-        //Username
-        lblUsername = new JLabel("Username");
-        lblUsername.setBounds(40, 90, 80, 25);
-        add(lblUsername);
+        lbUser = new JLabel("Username:");
+        lbUser.setBounds(30, 70, 80, 25);
+        add(lbUser);
 
         txtUsername = new JTextField();
-        txtUsername.setBounds(130, 90, 230, 28);
+        txtUsername.setBounds(110, 70, 180, 25);
         add(txtUsername);
 
-        //Password
-        lblPassword = new JLabel("Password");
-        lblPassword.setBounds(40, 135, 80, 25);
-        add(lblPassword);
+        lbPass = new JLabel("Password:");
+        lbPass.setBounds(30, 110, 80, 25);
+        add(lbPass);
 
         txtPassword = new JPasswordField();
-        txtPassword.setBounds(130, 135, 230, 28);
+        txtPassword.setBounds(110, 110, 180, 25);
         add(txtPassword);
 
-        //Button
         btnLogin = new JButton("Login");
-        btnLogin.setBounds(130, 190, 120, 35);
+        btnLogin.setBounds(120, 160, 100, 30);
         add(btnLogin);
 
-        //Add to ActionListener
         btnLogin.addActionListener(this);
+        txtPassword.addActionListener(this);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == btnLogin) {
-            String userName = txtUsername.getText().trim();
-            String password = new String(txtPassword.getPassword());
+        String user = txtUsername.getText().trim();
+        String pass = new String(txtPassword.getPassword()).trim();
 
-            if (userName.isEmpty() || password.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please enter username and password", "Input Error", JOptionPane.ERROR_MESSAGE);
-                return;
+        if (user.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try (Connection conn = DBConnection.getConnection()) {
+            String sql = "SELECT role FROM users WHERE username = ? AND password = ?";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, user);
+            pstmt.setString(2, pass);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                String role = rs.getString("role");
+                this.dispose();
+                new DashboardFrame(role, user).setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Failed", JOptionPane.ERROR_MESSAGE);
             }
-
-            try {
-                Connection con = DriverManager.getConnection(url, dbUser, dbPass);
-                PreparedStatement st = con.prepareStatement("SELECT username, password FROM users WHERE username=? AND password=?");
-                st.setString(1, userName);
-                st.setString(2, password);
-                ResultSet rs = st.executeQuery();
-
-                if (rs.next()) {
-                    dispose();
-                    HomeFrame home = new HomeFrame(userName);
-                    home.setTitle("Welcome");
-                    home.setVisible(true);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Wrong Username & Password", "Login Error", JOptionPane.ERROR_MESSAGE);
-                    txtPassword.setText("");
-                }
-                con.close();
-            } catch (SQLException sqlException) {
-                JOptionPane.showMessageDialog(this, "Cannot connect to the database. Check MySQL, schema.sql and the connector jar.", "Database Error", JOptionPane.ERROR_MESSAGE);
-                sqlException.printStackTrace();
-            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
+
